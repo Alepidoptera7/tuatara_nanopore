@@ -33,19 +33,30 @@ class nanopore_clustal:
                     print(read_count, header)
 
                     if header not in self.nanopore_read_dict.keys():
-                        self.nanopore_read_dict[header] = [seq]
+                        self.nanopore_read_dict[header] = seq
                     else:
-                        self.nanopore_read_dict[header].append(seq)
+                        self.nanopore_read_dict[header] += seq
 
                     nanopore_string = ""
 
+    def seq_to_fasta(self):
+        """The purpose of this def is to create a fasta file from the provided sequence from the original file.
+        The same file name will be used so that a multitude of files will not be maintained.
+        """
+
+        for header in self.nanopore_read_dict.keys():
+            infile = open("current_aln.fa", "w")
+            infile.write(header)
+            infile.write(self.nanopore_read_dict[header])
+            self.biopython_clustalw(infile)
+
     def biopython_clustalw(self, infile):
-        # r"C:/Users/Quin The Conquoror!/Desktop/clustal-omega-1.2.2-win64/clustalo"
+        """The purpose of this def is to develop a command to call clustal command line tool."""
+
         clustalOmega_exe = r"C:/Users/Quin The Conquoror!/Desktop/clustal-omega-1.2.2-win64/clustalo"
         # "M1-MN864230.1_clustalOmega_aligned"
-        cline_outfile = infile + self.outfile
+        cline_outfile = "current_aln"
         print(cline_outfile)
-        self.aln_outfile_list.append(cline_outfile)
 
         cline = ClustalOmegaCommandline(clustalOmega_exe, infile=infile, verbose=True, outfile=cline_outfile, outfmt="fasta", percentid=True)
 
