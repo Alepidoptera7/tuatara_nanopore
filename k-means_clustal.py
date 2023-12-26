@@ -1,13 +1,11 @@
-import sys
 import random
 import math
-import matplotlib
-#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
-from Bio import SeqIO
+import subprocess
+from Bio.Align.Applications import ClustalOmegaCommandline
 
 class k_means:
     """
@@ -18,7 +16,8 @@ class k_means:
         '''contructor: saves attribute fname '''
         self.fname = fname
         self.read_dict = {}
-        self.k = 9
+        self.k = 10
+        self.kmers = []
 
         self.multi_read_cluster_holder_dict = {}
         self.centroids_dict = {}
@@ -31,6 +30,8 @@ class k_means:
 
         self.random_string = ''
         self.nanopore_read_dict = {}
+        self.percent_id_list = []
+        self.percent_id_dict = {}
 
     def nanopore_parser(self):
         """This def is designed to open a given file and distribute genomic sequences to the k-means algorithm.
@@ -40,7 +41,8 @@ class k_means:
         """
         read_count = 0
         nanopore_string = ""
-        with open("SLZ14846-nanopore.fastq") as in_file:
+
+        with open("SLZ14846-nanopore-test.fastq") as in_file:
             for line in in_file:
 
                 if "@" and "read" in line:
@@ -55,22 +57,7 @@ class k_means:
                     read_count += 1
                     print(read_count, header)
                     self.pr_matrix(header, seq)
-                    #if header not in self.nanopore_read_dict.keys():
-                    #    self.nanopore_read_dict[header] = [seq]
-                    #else:
-                    #    self.nanopore_read_dict[header].append(seq)
-
                     nanopore_string = ""
-
-    def rand_seq(self, seq):
-        """Develops a random string the length of the read sequence for testing and comparison.
-
-        Input: original sequence
-        Output: random sequence of the same length
-        """
-
-        return ''.join(random.choices(['A','G','T','C'], k=len(seq)))
-
 
     def pr_matrix(self, head, seq):
         """
@@ -88,8 +75,6 @@ class k_means:
         Output: Dictionary with frequency Pr values attached to kmers.
         """
 
-        #seq = self.rand_seq(seq)
-
         self.kmers = [seq[i:i + 4] for i in range(0, len(seq), 4)]
         self.seq_dict[head] = seq
         self.sequence_assembly_dict[head] = {}
@@ -100,7 +85,6 @@ class k_means:
                 kmer_xy_coordinate_list.append((i*4, self.kmers.count(self.kmers[i]) / 256))
 
         self.read_dict[head] = kmer_xy_coordinate_list
-        #print(self.read_dict[head])
 
     def random_centroids(self):
         """Randomly selects k number of initial centroids by position in FASTA sequence.
@@ -135,7 +119,7 @@ class k_means:
 
             for point in self.read_dict[read]:
                 distance_list = []
-                x2,y2 = point[0], point[1]
+                x2, y2 = point[0], point[1]
 
                 for centroid in self.centroids_dict[read]:
                     x1, y1 = centroid[0], centroid[1]
@@ -148,7 +132,6 @@ class k_means:
 
             for i in range(self.k):
                 self.multi_read_cluster_holder_dict[read][i] = temp_placement_dict[i]
-
 
     def centroid_recalculation(self):
         """Recalculates centroids by cluster averaging.
@@ -171,7 +154,6 @@ class k_means:
             self.multi_read_centroid_change_list = centroid_change_list
             self.centroids_dict[read] = temp_centroid_list
 
-
     def sequence_assembly(self):
         """Assembling the sequences represented by the predicted clusters.
 
@@ -179,77 +161,114 @@ class k_means:
         Output: Separated genomic sequences
         """
 
-        for read in self.multi_read_cluster_holder_dict.keys():
-            print(read)
+        for header in self.multi_read_cluster_holder_dict.keys():
+            print(header)
 
-            self.x_coords_dict[read] = {i: [] for i in range(0, self.k)}
-            self.y_coords_dict[read] = {i: [] for i in range(0, self.k)}
+            self.x_coords_dict[header] = {i: [] for i in range(0, self.k)}
+            self.y_coords_dict[header] = {i: [] for i in range(0, self.k)}
 
-            for i in self.multi_read_cluster_holder_dict[read].keys():
+            for i in self.multi_read_cluster_holder_dict[header].keys():
                 cluster_sequence = ""
-                self.sequence_assembly_dict[read][i] = ""
+                self.sequence_assembly_dict[header][i] = ""
 
                 x_coords_list = []
                 y_coords_list = []
 
-                for point in self.multi_read_cluster_holder_dict[read][i]:
-                    cluster_sequence += self.seq_dict[read][point[0]: point[0] + 4]
+                for point in self.multi_read_cluster_holder_dict[header][i]:
+                    cluster_sequence += self.seq_dict[header][point[0]: point[0] + 4]
 
                     x_coords_list.append(point[0])
                     y_coords_list.append(point[1])
 
-                self.sequence_assembly_dict[read][i] = cluster_sequence
+                self.sequence_assembly_dict[header][i] = cluster_sequence
 
-                self.x_coords_dict[read][i] = x_coords_list
-                self.y_coords_dict[read][i] = y_coords_list
+                self.x_coords_dict[header][i] = x_coords_list
+                self.y_coords_dict[header][i] = y_coords_list
 
                 if cluster_sequence != "":
 
-                    print("cluster: ", i, " cluster size: ", "(", len(self.multi_read_cluster_holder_dict[read][i]), "/", len(self.read_dict[read]), ")", " portion of read: ",
-                         len(self.multi_read_cluster_holder_dict[read][i]) / len(self.read_dict[read]))
+                    print("cluster: ", i, " cluster size: ", "(", len(self.multi_read_cluster_holder_dict[header][i]), "/", len(self.read_dict[header]), ")",
+                          " portion of read: ",
+                         len(self.multi_read_cluster_holder_dict[header][i]) / len(self.read_dict[header]))
 
-                    print(self.sequence_assembly_dict[read][i])
+                    print(self.sequence_assembly_dict[header][i])
 
-                    self.blast(cluster_sequence)
+                    #self.blast(cluster_sequence)
+                    self.seq_to_fasta(header, cluster_sequence)
 
                     print("_____________________________________________________________________________\n")
                     print("_____________________________________________________________________________\n")
 
 
-    def cluster_graphing(self):
-        """ The purpose of this function is to develop graphs of each computational cluster.
-        Each subcluster will be represented in a different color, with all centroids marked similarly.
-
-        Input: Dictionaries of x and y coordinates per cluster per read, dictionaries of centroids
-        Output: Graphed clusters, each cluster in a distinct color in respect to each read.
+    def seq_to_fasta(self, header, seq):
+        """The purpose of this def is to create a fasta file from the provided sequence from the original file.
+        The same file name will be used so that a multitude of files will not be maintained.
         """
 
-        for read in self.multi_read_cluster_holder_dict.keys():
+        infile = open("current_aln.fa", "w")
+        infile.write(header)
+        infile.write(seq)
+        self.biopython_clustalw(infile)
 
-            for i in self.multi_read_cluster_holder_dict[read].keys():
+    def biopython_clustalw(self, infile):
+        """The purpose of this def is to develop a command to call clustal command line tool."""
 
-                xpoints_for_plotting = np.array(self.x_coords_dict[read][i])
-                ypoints_for_plotting = np.array(self.y_coords_dict[read][i])
+        clustalOmega_exe = r"C:/Users/Quin The Conquoror!/Desktop/clustal-omega-1.2.2-win64/clustalo"
+        cline_outfile = "current_aln.fa"
+        print(cline_outfile)
 
-                color_list = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:cyan', 'tab:purple', 'tab:brown',
-                              'tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:cyan', 'tab:purple', 'tab:brown']
+        cline = ClustalOmegaCommandline(clustalOmega_exe, infile=infile, verbose=True, outfile=cline_outfile, outfmt="fasta")
+        cline_str = str(cline)
+        subprocess.run(cline_str)
 
-                plt.scatter(xpoints_for_plotting, ypoints_for_plotting, color=color_list[i], marker='o')
+        self.percentid_calculator(cline_outfile)
 
-                centroids_x_list = [i for i, j in self.centroids_dict[read]]
-                centroids_y_list = [j for i, j in self.centroids_dict[read]]
-                centroid_x_points_for_plotting = np.array(centroids_x_list)
-                centroid_y_points_for_plotting = np.array(centroids_y_list)
+    def percentid_calculator(self, cline_outfile):
+        """The purpose of this def is to caculate percent identity between
+         a given sequence and the reference genome from previously generated alignments.
 
-                plt.scatter(centroid_x_points_for_plotting, centroid_y_points_for_plotting, color='k', marker='*')
+         Input: previously generated .fasta alignment file
+         Output: percent identy per alignment
+         """
 
-            plt.title(label=read)
-            plt.xlabel('kmer position')
-            plt.ylabel('kmer frequency')
+        base_list = ["N", "A", "G", "C", "T", "n"]
+        alignment_string = ""
+        base_index_list = []
+        alignment_string_list = []
+        gap_count = 0
 
-            plt.savefig(f"{read}.png")
+        with open(cline_outfile) as aln:
+            for line in aln:
+                alignment_string_list.append(line)
 
-        plt.show()
+        for line in alignment_string_list[1:]:
+            alignment_string += line
+
+        for base in base_list:
+            base_index_list.append(alignment_string.index(base))
+
+        base_index_list.sort()
+
+        for base in alignment_string[base_index_list[0]:base_index_list[-1]]:
+            if base == "-":
+                gap_count += 1
+
+        aln_len = base_index_list[-1] - base_index_list[0]
+        match_count = aln_len - gap_count
+
+        self.percent_id_dict[cline_outfile] = ((match_count * 100) / aln_len)
+
+        percent_identity = ((match_count * 100) / aln_len)
+
+        if percent_identity >= 0.95:
+            self.percent_id_list.append((cline_outfile, percent_identity))
+
+        # print(aln_outfile)
+        # print("base index list", base_index_list)
+        # print("gap count", gap_count)
+        # print("alignment length", aln_len)
+        # print("match count", match_count)
+        # print("Percent Identity: ", ((match_count * 100)/aln_len))
 
 
     def blast(self, cluster_sequence):
@@ -257,9 +276,7 @@ class k_means:
 
         Design taken from Biopython Manual.
         """
-        E_VALUE_THRESH = 0.0000000000000000001
-
-        result_handle = NCBIWWW.qblast("blastn", "nt", sequence=cluster_sequence, expect=1)
+        result_handle = NCBIWWW.qblast("blastn", "nt", sequence=cluster_sequence, perc_ident=85)
 
         blast_record = NCBIXML.read(result_handle)
 
@@ -267,9 +284,9 @@ class k_means:
 
         for alignment in blast_record.alignments:
             for hsp in alignment.hsps:
-                if hsp.expect < E_VALUE_THRESH:
-                    count += 1
-                    print(f"sequence: {alignment.title}, length: {alignment.length}nt, e-value: {hsp.expect}")
+                count += 1
+                print(f"sequence: {alignment.title}, length: {alignment.length}nt, e-value: {hsp.expect}")
+                print('Percent Identity: %', round(hsp.identities / hsp.align_length * 100, 2))
 
         print(f"There are {count} similar sequences in Blast output\n")
 
@@ -291,11 +308,9 @@ class k_means:
         print("total iterations of k-means clustering: ", iteration)
 
         self.sequence_assembly()
-        self.cluster_graphing()
 
 
 def main():
-
     class_access = k_means()
     class_access.driver()
 
