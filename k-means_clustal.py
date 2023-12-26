@@ -200,7 +200,6 @@ class k_means:
         new_file.write("\n")
         new_file.write(seq)
         new_file.write("\n")
-        new_file.write("\n")
 
         with open("MN864230.1.fa") as ref:
             for line in ref:
