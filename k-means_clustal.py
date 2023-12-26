@@ -194,34 +194,45 @@ class k_means:
                     print(self.sequence_assembly_dict[header][i])
 
                     #self.blast(cluster_sequence)
-                    self.seq_to_fasta(header, cluster_sequence)
+                    #self.seq_to_fasta(header, cluster_sequence)
 
                     print("_____________________________________________________________________________\n")
                     print("_____________________________________________________________________________\n")
-
 
     def seq_to_fasta(self, header, seq):
         """The purpose of this def is to create a fasta file from the provided sequence from the original file.
         The same file name will be used so that a multitude of files will not be maintained.
         """
+        print("header, seq:")
+        print(header, seq)
+        new_file = open("infile.fa", "w")
+        new_file.write(">")
+        new_file.write(header)
+        new_file.write("\n")
+        new_file.write(seq)
+        new_file.write("\n")
+        new_file.write("\n")
 
-        infile = open("current_aln.fa", "w")
-        infile.write(header)
-        infile.write(seq)
-        self.biopython_clustalw(infile)
+        with open("MN864229.fa") as ref:
+            for line in ref:
+                new_file.write(line)
+
+        cline = self.biopython_clustalw(new_file)
+        self.sub_process(cline)
+        #self.percentid_calculator(cline_outfile)
 
     def biopython_clustalw(self, infile):
         """The purpose of this def is to develop a command to call clustal command line tool."""
 
         clustalOmega_exe = r"C:/Users/Quin The Conquoror!/Desktop/clustal-omega-1.2.2-win64/clustalo"
-        cline_outfile = "current_aln.fa"
-        print(cline_outfile)
-
-        cline = ClustalOmegaCommandline(clustalOmega_exe, infile=infile, verbose=True, outfile=cline_outfile, outfmt="fasta")
+        cline_outfile = "cline_aln"
+        cline = ClustalOmegaCommandline(clustalOmega_exe, infile=infile, outfile=cline_outfile, outfmt="fasta", verbose=True )
         cline_str = str(cline)
-        subprocess.run(cline_str)
 
-        self.percentid_calculator(cline_outfile)
+        return cline_str
+
+    def sub_process(self, cline):
+        subprocess.run(cline)
 
     def percentid_calculator(self, cline_outfile):
         """The purpose of this def is to caculate percent identity between
