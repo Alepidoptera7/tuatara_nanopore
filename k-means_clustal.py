@@ -1,9 +1,6 @@
 import random
 import math
-import matplotlib.pyplot as plt
-import numpy as np
-from Bio.Blast import NCBIWWW
-from Bio.Blast import NCBIXML
+import numpy
 import subprocess
 from Bio.Align.Applications import ClustalOmegaCommandline
 
@@ -16,7 +13,7 @@ class k_means:
         '''contructor: saves attribute fname '''
         self.fname = fname
         self.read_dict = {}
-        self.k = 10
+        self.k = 2
         self.kmers = []
 
         self.multi_read_cluster_holder_dict = {}
@@ -145,6 +142,7 @@ class k_means:
             centroid_change_list = []
             for i in range(self.k):
                 if len(self.multi_read_cluster_holder_dict[read][i]) > 0:
+
                     new_centroid_x = sum([tup[0] for tup in self.multi_read_cluster_holder_dict[read][i]]) / len(self.multi_read_cluster_holder_dict[read][i])
                     new_centroid_y = sum([tup[1] for tup in self.multi_read_cluster_holder_dict[read][i]]) / len(self.multi_read_cluster_holder_dict[read][i])
 
@@ -170,33 +168,24 @@ class k_means:
             for i in self.multi_read_cluster_holder_dict[header].keys():
                 cluster_sequence = ""
                 self.sequence_assembly_dict[header][i] = ""
-
-                x_coords_list = []
-                y_coords_list = []
+                x_coords_list, y_coords_list = [], []
 
                 for point in self.multi_read_cluster_holder_dict[header][i]:
                     cluster_sequence += self.seq_dict[header][point[0]: point[0] + 4]
-
                     x_coords_list.append(point[0])
                     y_coords_list.append(point[1])
 
-                self.sequence_assembly_dict[header][i] = cluster_sequence
-
-                self.x_coords_dict[header][i] = x_coords_list
-                self.y_coords_dict[header][i] = y_coords_list
+                self.x_coords_dict[header][i], self.y_coords_dict[header][i]= x_coords_list, y_coords_list
 
                 if cluster_sequence != "":
+                    print("cluster: ", i, " cluster size: ", "(", len(cluster_sequence), "/", len(self.seq_dict[header]), ")",
+                          " portion of read: ", len(self.multi_read_cluster_holder_dict[header][i]) / len(self.read_dict[header]))
 
-                    print("cluster: ", i, " cluster size: ", "(", len(self.multi_read_cluster_holder_dict[header][i]), "/", len(self.read_dict[header]), ")",
-                          " portion of read: ",
-                         len(self.multi_read_cluster_holder_dict[header][i]) / len(self.read_dict[header]))
+                    print(cluster_sequence)
 
-                    print(self.sequence_assembly_dict[header][i])
+                    cluster_sequence = cluster_sequence + "\n"
+                    self.seq_to_fasta(header, cluster_sequence)
 
-                    #self.blast(cluster_sequence)
-                    #self.seq_to_fasta(header, cluster_sequence)
-
-                    print("_____________________________________________________________________________\n")
                     print("_____________________________________________________________________________\n")
 
     def seq_to_fasta(self, header, seq):
@@ -213,20 +202,22 @@ class k_means:
         new_file.write("\n")
         new_file.write("\n")
 
-        with open("MN864229.fa") as ref:
+        with open("MN864230.1.fa") as ref:
             for line in ref:
                 new_file.write(line)
 
-        cline = self.biopython_clustalw(new_file)
+        new_file.close()
+
+        cline = self.biopython_clustalw("infile.fa")
         self.sub_process(cline)
-        #self.percentid_calculator(cline_outfile)
+        self.percentid_calculator("cline_aln")
 
     def biopython_clustalw(self, infile):
         """The purpose of this def is to develop a command to call clustal command line tool."""
 
         clustalOmega_exe = r"C:/Users/Quin The Conquoror!/Desktop/clustal-omega-1.2.2-win64/clustalo"
         cline_outfile = "cline_aln"
-        cline = ClustalOmegaCommandline(clustalOmega_exe, infile=infile, outfile=cline_outfile, outfmt="fasta", verbose=True )
+        cline = ClustalOmegaCommandline(clustalOmega_exe, infile=infile, outfile=cline_outfile, outfmt="fasta", verbose=True, force=True )
         cline_str = str(cline)
 
         return cline_str
@@ -273,40 +264,17 @@ class k_means:
 
         if percent_identity >= 0.95:
             self.percent_id_list.append((cline_outfile, percent_identity))
-
-        # print(aln_outfile)
-        # print("base index list", base_index_list)
-        # print("gap count", gap_count)
-        # print("alignment length", aln_len)
-        # print("match count", match_count)
-        # print("Percent Identity: ", ((match_count * 100)/aln_len))
-
-
-    def blast(self, cluster_sequence):
-        """Develops a BLAST request for each clustered sequence via BioPython.
-
-        Design taken from Biopython Manual.
-        """
-        result_handle = NCBIWWW.qblast("blastn", "nt", sequence=cluster_sequence, perc_ident=85)
-
-        blast_record = NCBIXML.read(result_handle)
-
-        count = 0
-
-        for alignment in blast_record.alignments:
-            for hsp in alignment.hsps:
-                count += 1
-                print(f"sequence: {alignment.title}, length: {alignment.length}nt, e-value: {hsp.expect}")
-                print('Percent Identity: %', round(hsp.identities / hsp.align_length * 100, 2))
-
-        print(f"There are {count} similar sequences in Blast output\n")
+            #print("base index list", base_index_list)
+            #print("gap count", gap_count)
+            #print("alignment length", aln_len)
+            #print("match count", match_count)
+            print("Percent Identity: ", ((match_count * 100)/aln_len))
 
     def driver(self):
         """Drivers iterative processes"""
 
         self.nanopore_parser()
         self.random_centroids()
-
         self.distance_calculation()
 
         iteration = 0
