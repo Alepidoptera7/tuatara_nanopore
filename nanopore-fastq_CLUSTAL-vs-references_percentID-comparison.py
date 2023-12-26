@@ -54,13 +54,11 @@ class nanopore_clustal:
         """The purpose of this def is to develop a command to call clustal command line tool."""
 
         clustalOmega_exe = r"C:/Users/Quin The Conquoror!/Desktop/clustal-omega-1.2.2-win64/clustalo"
-        # "M1-MN864230.1_clustalOmega_aligned"
         cline_outfile = "current_aln"
         print(cline_outfile)
 
         cline = ClustalOmegaCommandline(clustalOmega_exe, infile=infile, verbose=True, outfile=cline_outfile, outfmt="fasta", percentid=True)
 
-        # powershell_cline = "./"+str(cline)
         return str(cline)
 
     def sub_process(self, cline):
