@@ -43,6 +43,17 @@ class bin_by_len:
                 #print(i, header, seq_len)
                 self.read_bin_dict[i].append((header, seq_len))
 
+    def bin_summation(self):
+
+        for i in self.read_bin_dict.keys():
+            nt_sum = 0
+
+            for read in self.read_bin_dict[i]:
+                nt_sum += read[1]
+
+            if nt_sum > 300000:
+                print("bin: ", i, "bin size: ", len(self.read_bin_dict[i]), "base sum: ", nt_sum)
+
     def print_out(self):
         """Prints the bin dict."""
 
@@ -53,7 +64,8 @@ class bin_by_len:
         """Drivers iterative processes"""
 
         self.nanopore_parser()
-        self.print_out()
+        self.bin_summation()
+        #self.print_out()
 
 def main():
     class_access = bin_by_len()
