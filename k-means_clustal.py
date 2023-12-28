@@ -9,11 +9,10 @@ class k_means:
     This class develops genomic categorization.
     """
 
-    def __init__(self, fname=''):
+    def __init__(self):
         '''contructor: saves attribute fname '''
-        self.fname = fname
         self.read_dict = {}
-        self.k = 2
+        self.k = 1
         self.kmers = []
 
         self.multi_read_cluster_holder_dict = {}
@@ -59,7 +58,7 @@ class k_means:
     def pr_matrix(self, head, seq):
         """
 
-        Develops a dictionary in which each kmer key is associated with a list of unique (x,y) = (position, frequency) coordinate tuples.
+        Develops a dictionary in which each kmer key is associated with a list of unique (x,y) = (position, frequency) coordinate tuples for 3 reading frames.
 
         These values are attached to the given kmer and used at y-coordinates for Euclidian distance calculations.
 
@@ -77,6 +76,7 @@ class k_means:
         self.sequence_assembly_dict[head] = {}
 
         kmer_xy_coordinate_list = []
+
         for i in range(0, len(self.kmers)):
             if len(self.kmers[i]) == 4:
                 kmer_xy_coordinate_list.append((i*4, self.kmers.count(self.kmers[i]) / 256))
@@ -209,7 +209,7 @@ class k_means:
 
         cline = self.biopython_clustalw("infile.fa")
         self.sub_process(cline)
-        self.percentid_calculator("cline_aln")
+        self.percentid_calculator(header, "cline_aln", len(seq))
 
     def biopython_clustalw(self, infile):
         """The purpose of this def is to develop a command to call clustal command line tool."""
@@ -224,7 +224,7 @@ class k_means:
     def sub_process(self, cline):
         subprocess.run(cline)
 
-    def percentid_calculator(self, cline_outfile):
+    def percentid_calculator(self, header, cline_outfile, seq_len):
         """The purpose of this def is to caculate percent identity between
          a given sequence and the reference genome from previously generated alignments.
 
@@ -261,13 +261,13 @@ class k_means:
 
         percent_identity = ((match_count * 100) / aln_len)
 
-        if percent_identity >= 0.95:
-            self.percent_id_list.append((cline_outfile, percent_identity))
-            #print("base index list", base_index_list)
-            #print("gap count", gap_count)
-            #print("alignment length", aln_len)
-            #print("match count", match_count)
-            print("Percent Identity: ", ((match_count * 100)/aln_len))
+        #print("base index list", base_index_list)
+        #print("gap count", gap_count)
+        #print("alignment length", aln_len)
+        #print("match count", match_count)
+        print("Percent Identity: ", ((match_count * 100)/aln_len))
+
+        self.percent_id_list.append((header, percent_identity, seq_len))
 
     def driver(self):
         """Drivers iterative processes"""
@@ -286,6 +286,11 @@ class k_means:
         print("total iterations of k-means clustering: ", iteration)
 
         self.sequence_assembly()
+
+        self.percent_id_list.sort(key=lambda a: a[1])
+
+        for i in self.percent_id_list:
+            print(i)
 
 
 def main():
