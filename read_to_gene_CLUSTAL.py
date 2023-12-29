@@ -50,7 +50,6 @@ class read_to_gene:
                     file_to_aln.write(seq)
                     file_to_aln.write("\n")
                     file_to_aln.write(ref_header)
-                    file_to_aln.write("\n")
                     file_to_aln.write(ref_seq)
                 else:
                     file_to_aln.write(ref_header)
@@ -59,9 +58,13 @@ class read_to_gene:
                     file_to_aln.write(header)
                     file_to_aln.write("\n")
                     file_to_aln.write(seq)
-            break
-        #cline = self.biopython_clustalw("clustal_infile.fa")
-        #self.sub_process(cline)
+
+            cline = self.biopython_clustalw("clustal_infile.fa")
+            self.sub_process(cline)
+            percent_id = self.percent_id_calculator()
+
+
+
 
     def biopython_clustalw(self, infile):
         """The purpose of this def is to develop a command to call clustal command line tool."""
@@ -76,7 +79,7 @@ class read_to_gene:
     def sub_process(self, cline):
         subprocess.run(cline)
 
-    def percentid_calculator(self, header, cline_outfile, seq_len):
+    def percent_id_calculator(self):
         """The purpose of this def is to caculate percent identity between
          a given sequence and the reference genome from previously generated alignments.
 
@@ -90,7 +93,7 @@ class read_to_gene:
         alignment_string_list = []
         gap_count = 0
 
-        with open(cline_outfile) as aln:
+        with open("cline_outfile.fa") as aln:
             for line in aln:
                 alignment_string_list.append(line)
 
@@ -119,7 +122,7 @@ class read_to_gene:
         #print("match count", match_count)
         print("Percent Identity: ", ((match_count * 100)/aln_len))
 
-        self.percent_id_list.append((header, percent_identity, seq_len))
+        return percent_identity
 
     def driver(self):
         """Driver calls functions."""
