@@ -20,6 +20,7 @@ class read_to_gene:
         """
 
         nanopore_string = ""
+        seq_num = 0
         with open("SLZ14846_nanopore_1k-18k.fasta") as in_file:
             for line in in_file:
                 nanopore_string += line
@@ -31,6 +32,10 @@ class read_to_gene:
 
                     if header and seq != "\n" or "":
                         self.alignment_file_creator(header, seq)
+                        seq_num += 1
+                        print("seq num: ", seq_num)
+
+            in_file.close()
 
     def alignment_file_creator(self, header, seq):
         """"""
@@ -69,9 +74,10 @@ class read_to_gene:
             print(ref_header + " " + ref_file)
             percent_id = self.percent_id_calculator()
 
-            if percent_id > 80:
+            if percent_id > 90:
                 self.file_dict[ref_file].append((header, percent_id))
 
+            ref.close()
 
     def biopython_clustalw(self, infile):
         """The purpose of this def is to develop a command to call clustal command line tool."""
@@ -135,22 +141,12 @@ class read_to_gene:
             new_file = open(key + "output.fa", "w")
 
             for result in self.percent_id_dict[key]:
-                new_file.write(result)
-
-    def print_out(self):
-        """Prints output."""
-
-        for key in self.file_dict.keys():
-
-            self.file_dict[key].sort(key=lambda a: a[1])
-
-            for i in self.file_dict[key]:
-                print(i)
+                for item in result:
+                    new_file.write(item)
 
     def driver(self):
         """Driver calls functions."""
         self.nanopore_parser()
-        self.print_out()
         self.output_file_creator()
 
 
