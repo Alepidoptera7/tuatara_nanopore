@@ -49,22 +49,19 @@ class read_to_gene:
                     file_to_aln.write("\n")
                     file_to_aln.write(seq)
                     file_to_aln.write("\n")
-                    file_to_aln.write("\n")
                     file_to_aln.write(ref_header)
                     file_to_aln.write("\n")
                     file_to_aln.write(ref_seq)
                 else:
                     file_to_aln.write(ref_header)
-                    file_to_aln.write("\n")
                     file_to_aln.write(ref_seq)
-                    file_to_aln.write("\n")
                     file_to_aln.write("\n")
                     file_to_aln.write(header)
                     file_to_aln.write("\n")
                     file_to_aln.write(seq)
-
-        cline = self.biopython_clustalw("clustal_infile.fa")
-        self.sub_process(cline)
+            break
+        #cline = self.biopython_clustalw("clustal_infile.fa")
+        #self.sub_process(cline)
 
     def biopython_clustalw(self, infile):
         """The purpose of this def is to develop a command to call clustal command line tool."""
