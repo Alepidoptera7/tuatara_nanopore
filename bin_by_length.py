@@ -40,8 +40,7 @@ class bin_by_len:
 
         for i in self.read_bin_dict.keys():
             if i - 1000 < seq_len < i:
-                #print(i, header, seq_len)
-                self.read_bin_dict[i].append((header, seq_len))
+                self.read_bin_dict[i].append([">"+header, seq])
 
     def bin_summation(self):
 
@@ -52,20 +51,30 @@ class bin_by_len:
                 nt_sum += read[1]
 
             if nt_sum > 300000:
-                print("bin: ", i, "bin size: ", len(self.read_bin_dict[i]), "base sum: ", nt_sum)
+                print("bin: ", i-1000, "-", i, ", bin size: ", len(self.read_bin_dict[i]), ", base sum: ", nt_sum)
+
+    def read_sorter(self):
+        """This def places sequences shorter than the M1 reference genome in a new file for later use."""
+        new_file = open("SLZ14846_nanopore_1k-18k.fasta", "w")
+        for i in range(1000, 18000, 1000):
+            for read in self.read_bin_dict[i]:
+                new_file.write(str(read[0]))
+                new_file.write(str(read[1]))
+                new_file.write("\n")
+                new_file.write("\n")
 
     def print_out(self):
         """Prints the bin dict."""
-
         for i in self.read_bin_dict.keys():
             print(len(self.read_bin_dict[i]), self.read_bin_dict[i])
 
     def driver(self):
-        """Drivers iterative processes"""
-
+        """Driver calls functions."""
         self.nanopore_parser()
-        self.bin_summation()
+        #self.bin_summation()
+        self.read_sorter()
         #self.print_out()
+
 
 def main():
     class_access = bin_by_len()
