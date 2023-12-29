@@ -7,7 +7,9 @@ class read_to_gene:
     """
 
     def __init__(self):
-        self.gene_file_list = ["LadyAliceND4.fasta", "LadyAliceND5.fasta", "LadyAliceCO1.fasta", "LadyAliceCO2.fasta"]
+        self.gene_file_list = ["LadyAliceND4.fasta", "LadyAliceND4.fasta", "LadyAliceND5.fasta", "LadyAliceCO1.fasta", "LadyAliceCO2.fasta",
+                               "StephensIslandCO1.fasta", "StephensIslandCO2.fasta", "StephensIslandND4.fasta", "StephensIslandND5.fasta"]
+        self.file_dict = {i: [] for i in self.gene_file_list}
         self.percent_id_dict = {}
 
     def nanopore_parser(self):
@@ -25,9 +27,10 @@ class read_to_gene:
                 if line == "\n":
                     split_nanopore_string = nanopore_string.split("@v3.5.2")
                     header, seq = split_nanopore_string[0], split_nanopore_string[1]
-
-                    self.alignment_file_creator(header, seq)
                     nanopore_string = ""
+
+                    if header and seq != "\n" or "":
+                        self.alignment_file_creator(header, seq)
 
     def alignment_file_creator(self, header, seq):
         """"""
@@ -40,7 +43,7 @@ class read_to_gene:
 
                 for line in ref:
                     if ">" in line:
-                        ref_header = line
+                        ref_header = line.strip("\n")
                     else:
                         ref_seq += line
 
@@ -49,10 +52,12 @@ class read_to_gene:
                     file_to_aln.write("\n")
                     file_to_aln.write(seq)
                     file_to_aln.write("\n")
-                    file_to_aln.write(ref_header)
+                    file_to_aln.write(ref_header + " " + ref_file)
+                    file_to_aln.write("\n")
                     file_to_aln.write(ref_seq)
                 else:
-                    file_to_aln.write(ref_header)
+                    file_to_aln.write(ref_header + " " + ref_file)
+                    file_to_aln.write("\n")
                     file_to_aln.write(ref_seq)
                     file_to_aln.write("\n")
                     file_to_aln.write(header)
@@ -61,16 +66,18 @@ class read_to_gene:
 
             cline = self.biopython_clustalw("clustal_infile.fa")
             self.sub_process(cline)
+            print(ref_header + " " + ref_file)
             percent_id = self.percent_id_calculator()
 
-
+            if percent_id > 80:
+                self.file_dict[ref_file].append((header, percent_id))
 
 
     def biopython_clustalw(self, infile):
         """The purpose of this def is to develop a command to call clustal command line tool."""
 
         clustalOmega_exe = r"C:/Users/Quin The Conquoror!/Desktop/clustal-omega-1.2.2-win64/clustalo"
-        cline_outfile = "cline_aln"
+        cline_outfile = "cline_outfile.fa"
         cline = ClustalOmegaCommandline(clustalOmega_exe, infile=infile, outfile=cline_outfile, outfmt="fasta", verbose=True, force=True)
         cline_str = str(cline)
 
@@ -101,7 +108,8 @@ class read_to_gene:
             alignment_string += line
 
         for base in base_list:
-            base_index_list.append(alignment_string.index(base))
+            if base in alignment_string:
+                base_index_list.append(alignment_string.index(base))
 
         base_index_list.sort()
 
@@ -111,9 +119,6 @@ class read_to_gene:
 
         aln_len = base_index_list[-1] - base_index_list[0]
         match_count = aln_len - gap_count
-
-        self.percent_id_dict[cline_outfile] = ((match_count * 100) / aln_len)
-
         percent_identity = ((match_count * 100) / aln_len)
 
         #print("base index list", base_index_list)
@@ -124,9 +129,30 @@ class read_to_gene:
 
         return percent_identity
 
+    def output_file_creator(self):
+        """This def is designed to take the high percent identiy reads for each gene alignment and write them into separate files for review."""
+        for key in self.percent_id_dict.keys():
+            new_file = open(key + "output.fa", "w")
+
+            for result in self.percent_id_dict[key]:
+                new_file.write(result)
+
+    def print_out(self):
+        """Prints output."""
+
+        for key in self.file_dict.keys():
+
+            self.file_dict[key].sort(key=lambda a: a[1])
+
+            for i in self.file_dict[key]:
+                print(i)
+
     def driver(self):
         """Driver calls functions."""
         self.nanopore_parser()
+        self.print_out()
+        self.output_file_creator()
+
 
 def main():
     class_access = read_to_gene()
