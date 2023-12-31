@@ -22,7 +22,8 @@ class read_to_gene:
         nanopore_string = ""
         seq_num = 0
         with open("SLZ14846_nanopore_1k-18k.fasta") as in_file:
-            for line in in_file:
+            for i in range(2000):
+                line = next(in_file)
                 nanopore_string += line
 
                 if line == "\n":
@@ -36,6 +37,7 @@ class read_to_gene:
                         print("seq num: ", seq_num)
 
             in_file.close()
+
 
     def alignment_file_creator(self, header, seq):
         """"""
@@ -55,15 +57,16 @@ class read_to_gene:
                 if len(ref_seq) > len(seq):
                     file_to_aln.write(header)
                     file_to_aln.write("\n")
-                    file_to_aln.write(seq)
+                    file_to_aln.write("$" + seq + "$")
                     file_to_aln.write("\n")
                     file_to_aln.write(ref_header + " " + ref_file)
                     file_to_aln.write("\n")
                     file_to_aln.write(ref_seq)
-                else:
+
+                if len(ref_seq) < len(seq):
                     file_to_aln.write(ref_header + " " + ref_file)
                     file_to_aln.write("\n")
-                    file_to_aln.write(ref_seq)
+                    file_to_aln.write("$" + ref_seq + "$")
                     file_to_aln.write("\n")
                     file_to_aln.write(header)
                     file_to_aln.write("\n")
@@ -71,6 +74,7 @@ class read_to_gene:
 
             cline = self.biopython_clustalw("clustal_infile.fa")
             self.sub_process(cline)
+            print(header)
             print(ref_header + " " + ref_file)
             percent_id = self.percent_id_calculator()
 
@@ -100,49 +104,50 @@ class read_to_gene:
          Output: percent identy per alignment
          """
 
-        base_list = ["N", "A", "G", "C", "T", "n"]
         alignment_string = ""
-        base_index_list = []
         alignment_string_list = []
         gap_count = 0
 
         with open("cline_outfile.fa") as aln:
             for line in aln:
                 alignment_string_list.append(line)
+                #print(line)
 
         for line in alignment_string_list[1:]:
             alignment_string += line
 
-        for base in base_list:
-            if base in alignment_string:
-                base_index_list.append(alignment_string.index(base))
+        start_char_index = alignment_string.index("$")
+        end_char_index = alignment_string.rindex("$")
 
-        base_index_list.sort()
-
-        for base in alignment_string[base_index_list[0]:base_index_list[-1]]:
+        for base in alignment_string[start_char_index:end_char_index]:
             if base == "-":
                 gap_count += 1
 
-        aln_len = base_index_list[-1] - base_index_list[0]
+        aln_len = end_char_index - start_char_index
         match_count = aln_len - gap_count
         percent_identity = ((match_count * 100) / aln_len)
 
-        #print("base index list", base_index_list)
-        #print("gap count", gap_count)
-        #print("alignment length", aln_len)
-        #print("match count", match_count)
-        print("Percent Identity: ", ((match_count * 100)/aln_len))
+        if percent_identity > 98:
+            print(alignment_string_list[0])
+            print(alignment_string[start_char_index:end_char_index])
+            print("start_char_index", start_char_index)
+            print("end char index", end_char_index)
+            #print("gap count", gap_count)
+            #print("alignment length", aln_len)
+            #print("match count", match_count)
+            print("Percent Identity: ", ((match_count * 100)/aln_len))
 
         return percent_identity
 
     def output_file_creator(self):
         """This def is designed to take the high percent identiy reads for each gene alignment and write them into separate files for review."""
-        for key in self.percent_id_dict.keys():
+        for key in self.file_dict.keys():
+            print(key, self.file_dict[key])
             new_file = open(key + "output.fa", "w")
-
-            for result in self.percent_id_dict[key]:
-                for item in result:
-                    new_file.write(item)
+            self.file_dict[key].sort(key=lambda a: a[1])
+            for result in self.file_dict[key]:
+                    new_file.write(str(result))
+                    new_file.write("\n")
 
     def driver(self):
         """Driver calls functions."""
