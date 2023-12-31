@@ -56,7 +56,7 @@ class bin_by_len:
     def read_sorter(self):
         """This def places sequences shorter than the M1 reference genome in a new file for later use."""
         new_file = open("SLZ14846_nanopore_1k-18k.fasta", "w")
-        for i in range(1000, 18000, 1000):
+        for i in range(2000, 18000, 1000):
             for read in self.read_bin_dict[i]:
                 new_file.write(str(read[0]))
                 new_file.write(str(read[1]))
